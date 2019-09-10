@@ -12,6 +12,12 @@ const client = redis.createClient(REDIS_PORT);
 // INIT AND SETUP FOR EXPRESS
 const app = express();
 
+// DISPLAY REPO COUNT - RESPONSE
+function setResponse(username, repos) {
+  return `<h2>${username} has ${repos} GitHub repos :D</h2>`;
+}
+
+// FETCH REPO COUNT - REQUEST
 async function getNumOfRepos(req, res, next) {
   try {
     console.log("Fetching Data...");
@@ -22,8 +28,12 @@ async function getNumOfRepos(req, res, next) {
 
     // format as JSON - we'll put the relevant data in our redis cache
     const data = await response.json();
+    const repos = data.public_repos;
 
-    res.send(data);
+    // setex allows us to set a expiration; takes key, expiration in seconds, data to be cached
+    client.setex(username, 3600, data);
+
+    res.send(setResponse(username, repos));
   } catch (err) {
     console.error(err);
     res.status(500);
@@ -33,6 +43,8 @@ async function getNumOfRepos(req, res, next) {
 app.listen(5000, () => {
   console.log(`App is now listening on port ${PORT}`);
 });
+
+// CACHE MIDDLEWARE
 
 // when this route is hit, the function is executed
 app.get("/repos/:username", getNumOfRepos);
