@@ -31,7 +31,7 @@ async function getNumOfRepos(req, res, next) {
     const repos = data.public_repos;
 
     // setex allows us to set a expiration; takes key, expiration in seconds, data to be cached
-    client.setex(username, 3600, data);
+    client.setex(username, 3600, repos);
 
     res.send(setResponse(username, repos));
   } catch (err) {
@@ -45,6 +45,21 @@ app.listen(5000, () => {
 });
 
 // CACHE MIDDLEWARE
+function cache(req, res, next) {
+  const { username } = req.params;
+
+  // client is the var storing our Redis instance
+  client.get(username, (err, data) => {
+    if (err) throw err;
+
+    // because this is middleware, we need to call the next function in line using next()
+    if (data !== null) {
+      res.send(setResponse(username, data));
+    } else {
+      next();
+    }
+  });
+}
 
 // when this route is hit, the function is executed
-app.get("/repos/:username", getNumOfRepos);
+app.get("/repos/:username", cache, getNumOfRepos);
